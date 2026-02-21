@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaxFlow 2026 | W-4 Calculator</title>
+    <!-- Whop Checkout SDK -->
+    <script src="https://cdn.whop.com/embed/checkout.js" async></script>
+    <style>
+        :root {
+            --bg-h: 220; --bg-s: 20%; --bg-l: 97%;
+            --bg: hsl(var(--bg-h), var(--bg-s), var(--bg-l));
+            --surface: #FFFFFF;
+            --text: #0F172A;
+            --muted: #64748B;
+            --faint: #94A3B8;
+            --accent: #2563EB;
+            --accent-soft: #EFF6FF;
+            --success: #10B981;
+            --success-soft: #D1FAE5;
+            --warning: #F59E0B;
+            --warning-soft: #FEF3C7;
+            --danger: #EF4444;
+            --danger-soft: #FEE2E2;
+            --border: #E2E8F0;
+            --radius: 16px;
+            --radius-sm: 12px;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+            --shadow-lg: 0 25px 50px -12px rgb(0 0 0 / 0.15);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; transition: background 1s; }
+        body.mood-success { --bg-h: 145; --bg-s: 15%; }
+        body.mood-danger { --bg-h: 0; --bg-s: 20%; }
+
+        .header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+        .progress { height: 4px; background: rgba(0,0,0,0.05); }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #8B5CF6); transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .header-inner { max-width: 600px; margin: 0 auto; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-weight: 800; font-size: 1.2rem; background: linear-gradient(135deg, var(--accent), #8B5CF6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .live-pill { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--surface); border-radius: 100px; box-shadow: var(--shadow); }
+        .live-value { font-size: 1.1rem; font-weight: 800; }
+        .live-value.refund { color: var(--success); }
+        .live-value.owe { color: var(--danger); }
+        .live-value.neutral { color: var(--faint); }
+        .live-badge { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; }
+        .live-badge.refund { background: var(--success-soft); color: var(--success); }
+        .live-badge.owe { background: var(--danger-soft); color: var(--danger); }
+        .year-badge { font-size: 0.7rem; font-weight: 600; padding: 5px 12px; background: var(--accent-soft); border-radius: 20px; color: var(--accent); }
+
+        .container { max-width: 560px; margin: 0 auto; padding: 100px 20px 80px; }
+
+        .step { display: none; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 32px; animation: fadeIn 0.4s ease; }
+        .step.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .step-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+        .step-sub { color: var(--muted); margin-bottom: 28px; }
+
+        .form-group { margin-bottom: 24px; }
+        .form-label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; }
+        .label-tag { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: var(--success-soft); color: var(--success); margin-left: 8px; }
+        .input-wrap { position: relative; }
+        .input-prefix { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 1.1rem; font-weight: 700; color: var(--faint); }
+        .form-input { width: 100%; padding: 14px 14px 14px 38px; font-family: inherit; font-size: 1.2rem; font-weight: 700; border: 2px solid var(--border); border-radius: var(--radius-sm); transition: all 0.2s; }
+        .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+        .form-input.no-prefix { padding-left: 14px; }
+        .form-hint { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+
+        .options { display: flex; flex-direction: column; gap: 10px; }
+        .option { padding: 16px; background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; }
+        .option:hover { border-color: var(--accent); }
+        .option.selected { background: var(--accent-soft); border-color: var(--accent); }
+        .option input { display: none; }
+        .option-content { display: flex; align-items: center; gap: 12px; }
+        .option-radio { width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .option.selected .option-radio { border-color: var(--accent); background: var(--accent); }
+        .option.selected .option-radio::after { content: ''; width: 8px; height: 8px; background: white; border-radius: 50%; }
+        .option-label { font-weight: 600; }
+        .option-desc { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .options-grid .option { text-align: center; }
+        .options-grid .option-content { flex-direction: column; gap: 0; }
+        .options-grid .option-radio { display: none; }
+
+        .stepper { display: flex; align-items: center; gap: 20px; }
+        .stepper-btn { width: 44px; height: 44px; border: none; border-radius: var(--radius-sm); background: var(--bg); font-size: 1.3rem; cursor: pointer; transition: all 0.15s; }
+        .stepper-btn:hover { background: var(--accent-soft); color: var(--accent); }
+        .stepper-btn:active { transform: scale(0.95); }
+        .stepper-val { font-size: 2rem; font-weight: 800; min-width: 50px; text-align: center; }
+
+        .deduction-card { background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 12px; overflow: hidden; }
+        .deduction-card.active { border-color: var(--accent); background: var(--accent-soft); }
+        .deduction-header { display: flex; align-items: center; gap: 12px; padding: 14px; cursor: pointer; }
+        .deduction-icon { font-size: 1.3rem; }
+        .deduction-info { flex: 1; }
+        .deduction-title { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .deduction-sub { font-size: 0.75rem; color: var(--muted); }
+        .deduction-value { font-weight: 700; color: var(--success); }
+        .deduction-input { display: none; padding: 0 14px 14px; }
+        .deduction-card.active .deduction-input { display: block; }
+        .toggle { width: 44px; height: 24px; background: var(--border); border-radius: 12px; padding: 2px; cursor: pointer; transition: all 0.2s; }
+        .toggle.on { background: var(--success); }
+        .toggle-thumb { width: 20px; height: 20px; background: white; border-radius: 50%; transition: all 0.2s; }
+        .toggle.on .toggle-thumb { transform: translateX(20px); }
+
+        .info-box { background: var(--accent-soft); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 20px; font-size: 0.85rem; color: #1E40AF; }
+        .info-box strong { display: block; margin-bottom: 4px; }
+
+        .btn-row { display: flex; gap: 12px; margin-top: 28px; }
+        .btn { flex: 1; padding: 16px; font-family: inherit; font-size: 1rem; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; border: none; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #1D4ED8; }
+        .btn-secondary { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+        .btn-secondary:hover { background: var(--bg); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+
+        /* Results */
+        .results-hero { text-align: center; padding: 36px 24px; border-radius: var(--radius); margin-bottom: 20px; color: white; }
+        .results-hero.refund { background: linear-gradient(135deg, #10B981, #059669); }
+        .results-hero.owe { background: linear-gradient(135deg, #EF4444, #DC2626); }
+        .results-hero.balanced { background: linear-gradient(135deg, var(--accent), #7C3AED); }
+        .results-emoji { font-size: 2.5rem; margin-bottom: 10px; }
+        .results-amount { font-size: 3rem; font-weight: 800; }
+        .results-label { opacity: 0.9; margin-top: 6px; }
+
+        .action-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 24px; margin-bottom: 16px; }
+        .action-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+        .w4-box { background: #FFFBEB; border: 2px solid #F59E0B; border-radius: var(--radius-sm); padding: 16px; margin-bottom: 12px; }
+        .w4-box-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .w4-box-step { width: 40px; height: 40px; background: #F59E0B; color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; }
+        .w4-box-title { font-weight: 700; }
+        .w4-box-sub { font-size: 0.75rem; color: #92400E; }
+        .w4-box-value { font-size: 1.75rem; font-weight: 800; color: #92400E; text-align: center; padding: 14px; background: white; border-radius: 8px; margin-bottom: 10px; }
+        .w4-box-hint { font-size: 0.85rem; color: #78350F; text-align: center; }
+        .w4-box.secondary { background: var(--bg); border-color: var(--border); }
+        .w4-box.secondary .w4-box-step { background: var(--accent); }
+        .w4-box.secondary .w4-box-value { color: var(--accent); }
+        .w4-box.secondary .w4-box-hint { color: var(--muted); }
+
+        .spouse-warning { background: var(--warning-soft); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px; font-size: 0.9rem; color: #92400E; display: flex; gap: 10px; }
+        .spouse-warning-icon { font-size: 1.3rem; }
+
+        .wealth-card { background: linear-gradient(135deg, #1E293B, #0F172A); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; color: white; display: none; }
+        .wealth-card.show { display: block; }
+        .wealth-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-bottom: 6px; }
+        .wealth-amount { font-size: 1.75rem; font-weight: 800; color: #10B981; margin-bottom: 4px; }
+        .wealth-label { font-size: 0.85rem; opacity: 0.8; margin-bottom: 16px; }
+        .wealth-stats { display: flex; gap: 10px; }
+        .wealth-stat { flex: 1; text-align: center; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+        .wealth-stat-val { font-weight: 700; color: #10B981; }
+        .wealth-stat-label { font-size: 0.65rem; opacity: 0.6; margin-top: 2px; }
+        .wealth-sub { margin-top:6px; font-size:13px; color:#667085; line-height:1.3; }
+
+        .pdf-section { text-align: center; padding: 20px; background: var(--bg); border-radius: var(--radius-sm); margin-bottom: 16px; }
+        .pdf-section h3 { font-size: 1rem; margin-bottom: 12px; }
+
+        .download-btns { display: flex; gap: 10px; flex-direction: column; }
+        .download-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border-radius: var(--radius-sm); font-weight: 600; text-decoration: none; transition: all 0.2s; cursor: pointer; border: none; font-size: 0.95rem; }
+        .download-btn:hover { transform: translateY(-2px); }
+        .download-btn.primary { background: linear-gradient(135deg, #10B981, #059669); color: white; font-size: 1.1rem; padding: 18px; }
+        .download-btn.secondary { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+        .personal-info-form { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+        .personal-info-form.show { display: block; }
+        .personal-info-form .form-input { font-size: 1rem; padding: 12px; }
+        .personal-info-form .form-input.no-prefix { padding-left: 12px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .loading { display: none; align-items: center; justify-content: center; gap: 10px; padding: 14px; }
+        .loading.show { display: flex; }
+        .spinner { width: 20px; height: 20px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Premium price badge */
+        .price-badge { font-size: 0.75rem; font-weight: 700; background: linear-gradient(135deg, #F59E0B, #D97706); color: white; padding: 4px 10px; border-radius: 20px; margin-left: 8px; }
+        .price-strike { text-decoration: line-through; opacity: 0.6; font-size: 0.8rem; margin-right: 4px; }
+
+        /* Ooze Loading Animation */
+        .ooze-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.95); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; }
+        .ooze-overlay.show { display: flex; }
+        .ooze-container { text-align: center; }
+        .ooze-blob { width: 120px; height: 120px; background: linear-gradient(135deg, #10B981, #059669); border-radius: 50%; animation: ooze 2s ease-in-out infinite; margin: 0 auto 24px; }
+        @keyframes ooze {
+            0%, 100% { transform: scale(1) rotate(0deg); border-radius: 50%; }
+            25% { transform: scale(1.1, 0.9) rotate(90deg); border-radius: 40% 60% 60% 40%; }
+            50% { transform: scale(0.9, 1.1) rotate(180deg); border-radius: 60% 40% 40% 60%; }
+            75% { transform: scale(1.05, 0.95) rotate(270deg); border-radius: 45% 55% 55% 45%; }
+        }
+        .ooze-text { color: white; font-size: 1.2rem; font-weight: 600; }
+        .ooze-subtext { color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 8px; }
+
+        /* Success state */
+        .ooze-success .ooze-blob { animation: none; background: #10B981; }
+        .ooze-success .ooze-blob::after { content: '✓'; font-size: 3rem; color: white; display: flex; align-items: center; justify-content: center; height: 100%; }
+
+        @media (max-width: 480px) {
+            .container { padding-top: 90px; }
+            .step { padding: 24px 20px; }
+            .results-amount { font-size: 2.5rem; }
+            .wealth-stats { flex-direction: column; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Ooze Loading Overlay -->
+    <div class="ooze-overlay" id="ooze-overlay">
+        <div class="ooze-container">
+            <div class="ooze-blob" id="ooze-blob"></div>
+            <div class="ooze-text" id="ooze-text">Processing payment...</div>
+            <div class="ooze-subtext" id="ooze-subtext">This only takes a moment</div>
+        </div>
+    </div>
+
+    <header class="header">
+        <div class="progress"><div class="progress-fill" id="progress" style="width:5%"></div></div>
+        <div class="header-inner">
+            <span class="logo">TaxFlow</span>
+            <div class="live-pill">
+                <span class="live-value neutral" id="live-val">$0</span>
+                <span class="live-badge" id="live-badge" style="display:none">Refund</span>
+            </div>
+            <span class="year-badge">2026</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Step 1: Filing -->
+        <section class="step active" data-step="1">
+            <h1 class="step-title">How will you file?</h1>
+            <p class="step-sub">Pick your tax filing status.</p>
+            <div class="options">
+                <label class="option"><input type="radio" name="filing" value="single"><div class="option-content"><div class="option-radio"></div><div><div class="option-label">Single</div></div></div></label>
+                <label class="option"><input type="radio" name="filing" value="married"><div class="option-content"><div class="option-radio"></div><div><div class="option-label">Married Filing Jointly</div><div class="option-desc">Filing one return together</div></div></div></label>
+                <label class="option"><input type="radio" name="filing" value="mfs"><div class="option-content"><div class="option-radio"></div><div><div class="option-label">Married Filing Separately</div></div></div></label>
+                <label class="option"><input type="radio" name="filing" value="head"><div class="option-content"><div class="option-radio"></div><div><div class="option-label">Head of Household</div><div class="option-desc">Unmarried with dependents</div></div></div></label>
+            </div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="next()">Continue →</button></div>
+        </section>
+
+        <!-- Step 2: Jobs -->
+        <section class="step" data-step="2">
+            <h1 class="step-title">How many jobs?</h1>
+            <p class="step-sub">Count you and your spouse if married.</p>
+            <div class="options">
+                <label class="option"><input type="radio" name="jobs" value="1"><div class="option-content"><div class="option-radio"></div><div><div class="option-label">1 job</div></div></div></label>
+                <label class="option"><input type="radio" name="jobs" value="2"><div class="option-content"><div class="option-radio"></div><div><div class="option-label">2 jobs</div><div class="option-desc">Both work</div></div></div></label>
+            </div>
+            <div class="btn-row"><button class="btn btn-secondary" onclick="prev()">← Back</button><button class="btn btn-primary" onclick="next()">Continue →</button></div>
+        </section>
+
+        <!-- Step 3: Your Income -->
+        <section class="step" data-step="3">
+            <h1 class="step-title">Your paycheck</h1>
+            <p class="step-sub">From your pay stub.</p>
+            <div class="form-group">
+                <label class="form-label">Yearly pay (before taxes)</label>
+                <div class="input-wrap"><span class="input-prefix">$</span><input type="text" class="form-input" id="income1" placeholder="55,000" inputmode="decimal" oninput="calc()"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Federal tax per paycheck</label>
+                <div class="input-wrap"><span class="input-prefix">$</span><input type="text" class="form-input" id="wh1" placeholder="350" inputmode="decimal" oninput="calc()"></div>
+                <p class="form-hint">Find "Federal Tax" on your stub</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Pay frequency</label>
+                <div class="options-grid">
+                    <label class="option"><input type="radio" name="freq1" value="52"><div class="option-content"><div class="option-label">Weekly</div></div></label>
+                    <label class="option selected"><input type="radio" name="freq1" value="26" checked><div class="option-content"><div class="option-label">Every 2 weeks</div></div></label>
+                    <label class="option"><input type="radio" name="freq1" value="24"><div class="option-content"><div class="option-label">Twice a month</div></div></label>
+                    <label class="option"><input type="radio" name="freq1" value="12"><div class="option-content"><div class="option-label">Monthly</div></div></label>
+                </div>
+            </div>
+            <div class="btn-row"><button class="btn btn-secondary" onclick="prev()">← Back</button><button class="btn btn-primary" onclick="next()">Continue →</button></div>
+        </section>
+
+        <!-- Step 4: Spouse Income -->
+        <section class="step" data-step="4">
+            <h1 class="step-title">Spouse's paycheck</h1>
+            <p class="step-sub">Same info from their stub.</p>
+            <div class="form-group">
+                <label class="form-label">Their yearly pay</label>
+                <div class="input-wrap"><span class="input-prefix">$</span><input type="text" class="form-input" id="income2" placeholder="45,000" inputmode="decimal" oninput="calc()"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Their federal tax per paycheck</label>
+                <div class="input-wrap"><span class="input-prefix">$</span><input type="text" class="form-input" id="wh2" placeholder="280" inputmode="decimal" oninput="calc()"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Their pay frequency</label>
+                <div class="options-grid">
+                    <label class="option"><input type="radio" name="freq2" value="52"><div class="option-content"><div class="option-label">Weekly</div></div></label>
+                    <label class="option selected"><input type="radio" name="freq2" value="26" checked><div class="option-content"><div class="option-label">Every 2 weeks</div></div></label>
+                    <label class="option"><input type="radio" name="freq2" value="24"><div class="option-content"><div class="option-label">Twice a month</div></div></label>
+                    <label class="option"><input type="radio" name="freq2" value="12"><div class="option-content"><div class="option-label">Monthly</div></div></label>
+                </div>
+            </div>
+            <div class="btn-row"><button class="btn btn-secondary" onclick="prev()">← Back</button><button class="btn btn-primary" onclick="next()">Continue →</button></div>
+        </section>
+
+        <!-- Step 5: Dependents -->
+        <section class="step" data-step="5">
+            <h1 class="step-title">Kids & dependents</h1>
+            <p class="step-sub">People you support.</p>
+            <div class="form-group">
+                <label class="form-label">Kids under 17</label>
+                <div class="stepper"><button class="stepper-btn" onclick="adj('kids',-1)">−</button><span class="stepper-val" id="kids-val">0</span><button class="stepper-btn" onclick="adj('kids',1)">+</button></div>
+                <p class="form-hint">$2,200 credit each</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Other dependents</label>
+                <div class="stepper"><button class="stepper-btn" onclick="adj('others',-1)">−</button><span class="stepper-val" id="others-val">0</span><button class="stepper-btn" onclick="adj('others',1)">+</button></div>
+                <p class="form-hint">$500 credit each</p>
+            </div>
+            <div class="btn-row"><button class="btn btn-secondary" onclick="prev()">← Back</button><button class="btn btn-primary" onclick="next()">Continue →</button></div>
+        </section>
+
+        <!-- Step 6: OBBBA Deductions -->
+        <section class="step" data-step="6">
+            <h1 class="step-title">New 2026 tax breaks</h1>
+            <p class="step-sub">Congress passed new deductions.</p>
+            <div class="info-box"><strong>🏛️ What's this?</strong>The OBBBA law made tips, overtime, and car loan interest tax-free for many workers.</div>
+
+            <div class="deduction-card" id="card-tips"><div class="deduction-header" onclick="toggleDed('tips')"><div class="deduction-icon">💵</div><div class="deduction-info"><div class="deduction-title">Tips <span class="label-tag">NEW</span></div><div class="deduction-sub">First $25,000 tax-free</div></div><div class="deduction-value" id="val-tips">$0</div></div><div class="deduction-input"><div class="input-wrap"><span class="input-prefix">$</span><input type="text" class="form-input" id="tips" placeholder="0" inputmode="decimal" oninput="updateDed('tips')" onclick="event.stopPropagation()"></div></div></div>
+
+            <div class="deduction-card" id="card-ot"><div class="deduction-header" onclick="toggleDed('ot')"><div class="deduction-icon">⏰</div><div class="deduction-info"><div class="deduction-title">Overtime <span class="label-tag">NEW</span></div><div class="deduction-sub">First $12,500 tax-free</div></div><div class="deduction-value" id="val-ot">$0</div></div><div class="deduction-input"><div class="input-wrap"><span class="input-prefix">$</span><input type="text" class="form-input" id="overtime" placeholder="0" inputmode="decimal" oninput="updateDed('ot')" onclick="event.stopPropagation()"></div></div></div>
+
+            <div class="deduction-card" id="card-car"><div class="deduction-header" onclick="toggleDed('car')"><div class="deduction-icon">🚗</div><div class="deduction-info"><div class="deduction-title">Car loan interest <span class="label-tag">NEW</span></div><div class="deduction-sub">Up to $10,000</div></div><div class="deduction-value" id="val-car">$0</div></div><div class="deduction-input"><div class="input-wrap"><span class="input-prefix">$</span><input type="text" class="form-input" id="carloan" placeholder="0" inputmode="decimal" oninput="updateDed('car')" onclick="event.stopPropagation()"></div></div></div>
+
+            <div class="deduction-card" id="card-senior"><div class="deduction-header" onclick="toggleDed('senior')"><div class="deduction-icon">👴</div><div class="deduction-info"><div class="deduction-title">Senior (65+) <span class="label-tag">NEW</span></div><div class="deduction-sub">$6,000 deduction</div></div><div class="deduction-value" id="val-senior">$0</div></div></div>
+
+            <div class="btn-row"><button class="btn btn-secondary" onclick="prev()">← Back</button><button class="btn btn-primary" onclick="next()">Continue →</button></div>
+        </section>
+
+        <!-- Step 7: Side Hustle -->
+        <section class="step" data-step="7">
+            <h1 class="step-title">Side income?</h1>
+            <p class="step-sub">Freelance, Uber, Etsy, etc.</p>
+            <div class="form-group">
+                <label class="form-label">1099 / Self-employment <span class="label-tag">Optional</span></label>
+                <div class="input-wrap"><span class="input-prefix">$</span><input type="text" class="form-input" id="sidehustle" placeholder="0" inputmode="decimal" oninput="calcSide()"></div>
+            </div>
+            <div id="side-result" style="display:none" class="info-box" style="background:#FEF3C7;border:2px solid #F59E0B;color:#92400E;">
+                <strong>🎯 Side Hustle Safety Net</strong>
+                Add <strong id="side-extra">$0</strong> extra per paycheck to W-4 Step 4(c). Covers income tax + 15.3% SE tax.
+            </div>
+            <div class="btn-row"><button class="btn btn-secondary" onclick="prev()">← Back</button><button class="btn btn-primary" onclick="showResults()">See Results →</button></div>
+        </section>
+
+        <!-- Step 8: Results -->
+        <section class="step" data-step="8">
+            <div class="results-hero" id="res-hero">
+                <div class="results-emoji" id="res-emoji">🎉</div>
+                <div class="results-amount" id="res-amount">$0</div>
+                <div class="results-label" id="res-label">estimated refund</div>
+            </div>
+
+            <div class="wealth-card" id="wealth-card">
+                <div class="wealth-title">💰 Your Hidden Raise</div>
+                <div class="wealth-amount" id="wealth-mo">+$0/mo</div>
+                <div class="wealth-label">estimated take-home change after updating your W-4</div>
+                <div class="wealth-sub">Positive = bigger paychecks (smaller refund). Negative = smaller paychecks (bigger refund).</div>
+                <div class="wealth-stats">
+                    <div class="wealth-stat"><div class="wealth-stat-val" id="wealth-1y">$0</div><div class="wealth-stat-label">1 year</div></div>
+                    <div class="wealth-stat"><div class="wealth-stat-val" id="wealth-5y">$0</div><div class="wealth-stat-label">5 years*</div></div>
+                    <div class="wealth-stat"><div class="wealth-stat-val" id="wealth-10y">$0</div><div class="wealth-stat-label">10 years*</div></div>
+                </div>
+                <p style="font-size:0.6rem;opacity:0.5;margin-top:12px;text-align:center;">*At 7% if invested</p>
+            </div>
+
+            <div class="action-card">
+                <div class="action-title">📋 What We Found</div>
+                
+                <p style="font-size:1rem;color:var(--text);margin-bottom:16px;line-height:1.6;">
+                    Based on your numbers, we've identified a few changes you can make to your W-4 to <strong>put more money in your pocket</strong> — or ensure you don't get hit with a big bill come tax season.
+                </p>
+                
+                <p style="font-size:0.95rem;color:var(--muted);margin-bottom:0;">
+                    Download your pre-filled W-4 below. Just sign it and hand it to HR.
+                </p>
+            </div>
+
+            <div class="pdf-section">
+                <h3>Get Your Pre-Filled W-4 <span class="price-badge">$19.99</span></h3>
+                <p style="font-size:0.95rem;color:var(--text);margin-bottom:8px;font-weight:600;">Don't wait until 2027 for your refund. Get it today.</p>
+                <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">Stop giving the IRS a 0% interest loan.</p>
+                
+                <div class="personal-info-form" id="personal-form">
+                    <div class="form-group">
+                        <div class="form-row">
+                            <div><label class="form-label">First Name</label><input type="text" class="form-input no-prefix" id="firstName" placeholder="John"></div>
+                            <div><label class="form-label">Last Name</label><input type="text" class="form-input no-prefix" id="lastName" placeholder="Smith"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Social Security Number</label>
+                        <input type="text" inputmode="numeric" autocomplete="off" class="form-input no-prefix" id="ssn" placeholder="123-45-6789" maxlength="11">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Address</label>
+                        <input type="text" class="form-input no-prefix" id="address" placeholder="123 Main St">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-row">
+                            <div><label class="form-label">City</label><input type="text" class="form-input no-prefix" id="city" placeholder="Bismarck"></div>
+                            <div><label class="form-label">State</label><input type="text" class="form-input no-prefix" id="state" placeholder="ND" maxlength="2"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ZIP Code</label>
+                        <input type="text" class="form-input no-prefix" id="zip" placeholder="58501" maxlength="10">
+                    </div>
+                </div>
+
+                <div class="download-btns" id="download-btns">
+                    <button class="download-btn primary" onclick="startPremiumFlow()">
+                        📄 Get My Instant Raise — $19.99
+                    </button>
+                    <a href="https://www.irs.gov/pub/irs-pdf/fw4.pdf" target="_blank" class="download-btn secondary">Download Blank W-4 (Free)</a>
+                </div>
+            </div>
+
+            <div class="btn-row"><button class="btn btn-secondary" onclick="prev()">← Back</button></div>
+        </section>
+    </main>
+
+    <script>
+        // ============================================
+        // WHOP CONFIGURATION
+        // ============================================
+        const WHOP_CONFIG = {
+            // Your Whop Plan ID
+            planId: 'plan_oShbDxIPnAiym',
+            // Direct checkout URL using Plan ID
+            checkoutUrl: 'https://whop.com/checkout/plan_oShbDxIPnAiym',
+            siteUrl: window.location.origin
+        };
+
+        let step = 1;
+        const STEPS = 8;
+        const S = { filing:'single', jobs:1, income1:0, wh1:0, freq1:26, income2:0, wh2:0, freq2:26, kids:0, others:0, tips:0, ot:0, car:0, senior:false, side:0 };
+
+        // Tax engine
+        const Tax = {
+            brackets: {
+                single: [[11925,.10],[48475,.12],[103350,.22],[197300,.24],[250525,.32],[626350,.35],[Infinity,.37]],
+                married: [[23850,.10],[96950,.12],[206700,.22],[394600,.24],[501050,.32],[751600,.35],[Infinity,.37]],
+                mfs: [[11925,.10],[48475,.12],[103350,.22],[197300,.24],[250525,.32],[626350,.35],[Infinity,.37]],
+                head: [[17000,.10],[64850,.12],[103350,.22],[197300,.24],[250500,.32],[626350,.35],[Infinity,.37]]
+            },
+            std: { single:16100, married:32200, mfs:16100, head:24150 },
+            
+            calc(s) {
+                const w2 = s.income1 + (s.jobs >= 2 ? s.income2 : 0);
+                const total = w2 + s.side;
+                const obbba = Math.min(s.tips, 25000) + Math.min(s.ot, s.filing === 'married' ? 25000 : 12500) + Math.min(s.car, 10000) + (s.senior ? 6000 : 0);
+                const seTax = s.side > 0 ? s.side * 0.9235 * 0.153 : 0;
+                const seDed = seTax / 2;
+                const deductions = this.std[s.filing] + obbba + seDed;
+                const taxable = Math.max(0, total - deductions);
+                const brackets = this.brackets[s.filing] || this.brackets.single;
+                let tax = 0, prev = 0;
+                for (const [limit, rate] of brackets) {
+                    if (taxable <= prev) break;
+                    tax += (Math.min(taxable, limit) - prev) * rate;
+                    prev = limit;
+                }
+                tax += seTax;
+                const childCredit = s.kids * 2200;
+                const otherCredit = s.others * 500;
+                const credits = childCredit + otherCredit;
+                const finalTax = Math.max(0, tax - credits);
+                const wh = s.wh1 * s.freq1 + (s.jobs >= 2 ? s.wh2 * s.freq2 : 0);
+                const diff = wh - finalTax;
+                return { total, finalTax, wh, diff, credits, childCredit, otherCredit, obbba };
+            },
+            
+            sideExtra(s) {
+                if (s.side <= 0) return 0;
+                const seNet = s.side * 0.9235;
+                const seTax = seNet * 0.153;
+                const brackets = this.brackets[s.filing] || this.brackets.single;
+                const w2Taxable = Math.max(0, s.income1 - this.std[s.filing]);
+                let rate = 0.12;
+                for (const [limit, r] of brackets) { if (w2Taxable <= limit) { rate = r; break; } }
+                const incomeTax = s.side * rate;
+                return Math.ceil((incomeTax + seTax) / s.freq1);
+            }
+        };
+
+        // Helpers
+        const $ = id => document.getElementById(id);
+        const num = s => parseFloat((s||'').replace(/[^0-9.-]/g,'')) || 0;
+        const fmt = n => '$' + Math.abs(Math.round(n)).toLocaleString();
+
+        function collect() {
+            const f = document.querySelector('input[name="filing"]:checked');
+            if (f) S.filing = f.value;
+            const j = document.querySelector('input[name="jobs"]:checked');
+            if (j) S.jobs = parseInt(j.value);
+            S.income1 = num($('income1')?.value);
+            S.wh1 = num($('wh1')?.value);
+            const f1 = document.querySelector('input[name="freq1"]:checked');
+            if (f1) S.freq1 = parseInt(f1.value);
+            S.income2 = num($('income2')?.value);
+            S.wh2 = num($('wh2')?.value);
+            const f2 = document.querySelector('input[name="freq2"]:checked');
+            if (f2) S.freq2 = parseInt(f2.value);
+            S.tips = num($('tips')?.value);
+            S.ot = num($('overtime')?.value);
+            S.car = num($('carloan')?.value);
+            S.side = num($('sidehustle')?.value);
+        }
+
+        function calc() {
+            collect();
+            const r = Tax.calc(S);
+            const el = $('live-val'), badge = $('live-badge');
+            
+            if (r.diff > 100) {
+                el.textContent = '+' + fmt(r.diff);
+                el.className = 'live-value refund';
+                badge.textContent = 'Refund';
+                badge.className = 'live-badge refund';
+                badge.style.display = 'inline';
+                document.body.className = 'mood-success';
+            } else if (r.diff < -100) {
+                el.textContent = fmt(r.diff);
+                el.className = 'live-value owe';
+                badge.textContent = 'Owe';
+                badge.className = 'live-badge owe';
+                badge.style.display = 'inline';
+                document.body.className = 'mood-danger';
+            } else {
+                el.textContent = '$0';
+                el.className = 'live-value neutral';
+                badge.style.display = 'none';
+                document.body.className = '';
+            }
+        }
+
+        function show(n) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.querySelector(`.step[data-step="${n}"]`)?.classList.add('active');
+            step = n;
+            $('progress').style.width = ((n / STEPS) * 100) + '%';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function next() {
+            collect();
+            if (step === 3 && S.jobs < 2) { show(5); return; }
+            show(step + 1);
+        }
+
+        function prev() {
+            if (step === 5 && S.jobs < 2) { show(3); return; }
+            if (step === 8) { show(7); return; }
+            show(step - 1);
+        }
+
+        function adj(type, d) {
+            S[type] = Math.max(0, S[type] + d);
+            $(type + '-val').textContent = S[type];
+            calc();
+        }
+
+        function toggleDed(id) {
+            const card = $('card-' + id);
+            if (id === 'senior') {
+                S.senior = !S.senior;
+                card.classList.toggle('active', S.senior);
+                $('val-senior').textContent = S.senior ? '$6,000' : '$0';
+            } else {
+                card.classList.toggle('active');
+            }
+            calc();
+        }
+
+        function updateDed(id) {
+            const map = { tips: ['tips', 25000], ot: ['overtime', 12500], car: ['carloan', 10000] };
+            const [inputId, max] = map[id];
+            const val = Math.min(num($(inputId)?.value), max);
+            $('val-' + id).textContent = val > 0 ? fmt(val) : '$0';
+            calc();
+        }
+
+        function calcSide() {
+            collect();
+            const extra = Tax.sideExtra(S);
+            if (S.side > 0) {
+                $('side-extra').textContent = fmt(extra);
+                $('side-result').style.display = 'block';
+            } else {
+                $('side-result').style.display = 'none';
+            }
+            calc();
+        }
+
+        function showResults() {
+            collect();
+            const r = Tax.calc(S);
+            const hero = $('res-hero'), emoji = $('res-emoji'), amount = $('res-amount'), label = $('res-label');
+
+            if (r.diff > 100) {
+                hero.className = 'results-hero refund';
+                emoji.textContent = '🎉';
+                amount.textContent = fmt(r.diff);
+                label.textContent = 'estimated refund';
+            } else if (r.diff < -100) {
+                hero.className = 'results-hero owe';
+                emoji.textContent = '⚠️';
+                amount.textContent = fmt(r.diff);
+                label.textContent = "you'll owe — let's fix it";
+            } else {
+                hero.className = 'results-hero balanced';
+                emoji.textContent = '✓';
+                amount.textContent = '$0';
+                label.textContent = 'perfectly balanced';
+            }
+
+            // Wealth card
+            const wc = $('wealth-card');
+            if (r.diff > 500) {
+                const mo = Math.round(r.diff / 12);
+                const rate = 0.07 / 12;
+                const fv5 = mo * ((Math.pow(1 + rate, 60) - 1) / rate);
+                const fv10 = mo * ((Math.pow(1 + rate, 120) - 1) / rate);
+                $('wealth-mo').textContent = '+$' + mo + '/mo';
+                $('wealth-1y').textContent = fmt(r.diff);
+                $('wealth-5y').textContent = fmt(fv5);
+                $('wealth-10y').textContent = fmt(fv10);
+                wc.classList.add('show');
+            } else {
+                wc.classList.remove('show');
+            }
+
+            show(8);
+        }
+
+        // ============================================
+        // PREMIUM FLOW - WHOP PAYWALL
+        // ============================================
+        
+        let personalFormVisible = false;
+        
+        function startPremiumFlow() {
+            // Show personal info form first
+            if (!personalFormVisible) {
+                $('personal-form').classList.add('show');
+                $('download-btns').innerHTML = `
+                    <button class="download-btn primary" onclick="openWhopCheckout()">
+                        💳 Continue to Payment — $19.99
+                    </button>
+                    <button class="download-btn secondary" onclick="cancelPremiumFlow()">Cancel</button>
+                `;
+                personalFormVisible = true;
+                return;
+            }
+        }
+        
+        function cancelPremiumFlow() {
+            $('personal-form').classList.remove('show');
+            $('download-btns').innerHTML = `
+                <button class="download-btn primary" onclick="startPremiumFlow()">
+                    📄 Get My Instant Raise — $19.99
+                </button>
+                <a href="https://www.irs.gov/pub/irs-pdf/fw4.pdf" target="_blank" class="download-btn secondary">Download Blank W-4 (Free)</a>
+            `;
+            personalFormVisible = false;
+        }
+
+        function openWhopCheckout() {
+            // Validate form
+            const firstName = $('firstName')?.value?.trim();
+            const lastName = $('lastName')?.value?.trim();
+            
+            if (!firstName || !lastName) {
+                alert('Please enter your name to continue.');
+                return;
+            }
+
+            // Store user data for after payment
+            const userData = {
+                firstName: $('firstName')?.value || '',
+                lastName: $('lastName')?.value || '',
+                ssn: $('ssn')?.value || '',
+                address: $('address')?.value || '',
+                city: $('city')?.value || '',
+                state: $('state')?.value || '',
+                zip: $('zip')?.value || '',
+                filing: S.filing
+            };
+
+            // Calculate results for PDF
+            const r = Tax.calc(S);
+            let extra = 0;
+            if (r.diff < -100) extra = Math.ceil(Math.abs(r.diff) / S.freq1);
+            if (S.side > 0) extra += Tax.sideExtra(S);
+
+            const calcResults = {
+                multipleJobs: S.jobs >= 2,
+                childrenCredit: S.kids * 2200,
+                otherCredit: S.others * 500,
+                totalCredits: r.credits,
+                otherIncome: 0,
+                deductions: r.obbba,
+                extraWithholding: extra
+            };
+
+            // Save to both window and localStorage
+            window.pendingUserData = userData;
+            window.pendingCalcResults = calcResults;
+            localStorage.setItem('taxflow_userData', JSON.stringify(userData));
+            localStorage.setItem('taxflow_calcResults', JSON.stringify(calcResults));
+            localStorage.setItem('taxflow_pending', 'true');
+
+            // Try Whop SDK first, fallback to redirect
+            if (typeof Whop !== 'undefined' && Whop.openCheckout) {
+                Whop.openCheckout({
+                    planId: WHOP_CONFIG.planId,
+                    onSuccess: handlePaymentSuccess,
+                    onClose: () => console.log('Checkout closed')
+                });
+            } else {
+                // Fallback: redirect to Whop hosted checkout
+                const returnUrl = encodeURIComponent(window.location.origin + '?payment=success');
+                window.location.href = WHOP_CONFIG.checkoutUrl + '?redirect_url=' + returnUrl;
+            }
+        }
+
+        // Check if returning from successful payment (redirect flow)
+        async function checkPaymentReturn() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paymentStatus = urlParams.get('payment');
+            const hasPending = localStorage.getItem('taxflow_pending');
+
+            if (paymentStatus === 'success' && hasPending) {
+                // Clear the URL params
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Get stored data
+                const userData = JSON.parse(localStorage.getItem('taxflow_userData') || '{}');
+                const calcResults = JSON.parse(localStorage.getItem('taxflow_calcResults') || '{}');
+                
+                // Clear pending flag
+                localStorage.removeItem('taxflow_pending');
+
+                // Generate PDF
+                await generatePDFAfterPayment(userData, calcResults);
+            }
+        }
+
+        async function generatePDFAfterPayment(userData, calcResults) {
+            showOoze('Payment confirmed!', 'Generating your W-4...');
+
+            try {
+                const response = await fetch('/api/generate-w4', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userData: userData,
+                        calcResults: calcResults,
+                        whopToken: 'whop_payment_verified_' + Date.now()
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'PDF generation failed');
+                }
+
+                updateOoze('Almost there...', 'Preparing your download');
+                await new Promise(r => setTimeout(r, 800));
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'W4-2026-TaxFlow.pdf';
+                
+                showOozeSuccess();
+                await new Promise(r => setTimeout(r, 1500));
+                
+                a.click();
+                URL.revokeObjectURL(url);
+                hideOoze();
+
+                // Store for re-download
+                window.paidUserData = userData;
+                window.paidCalcResults = calcResults;
+
+                showPaidSuccessUI();
+
+            } catch (err) {
+                hideOoze();
+                alert('Error generating PDF: ' + err.message + '\n\nPlease contact support.');
+                console.error(err);
+            }
+        }
+
+        function showPaidSuccessUI() {
+            show(8);
+            $('download-btns').innerHTML = `
+                <button class="download-btn primary" onclick="redownloadPDF()">📄 Download Again</button>
+                <a href="https://www.irs.gov/pub/irs-pdf/fw4.pdf" target="_blank" class="download-btn secondary">Blank W-4</a>
+            `;
+            $('personal-form').classList.remove('show');
+            personalFormVisible = false;
+        }
+
+        // Handle SDK checkout success (modal flow)
+        async function handlePaymentSuccess(result) {
+            showOoze('Processing payment...', 'This only takes a moment');
+
+            try {
+                const whopToken = result?.membership?.id || result?.id || 'payment_verified';
+                localStorage.removeItem('taxflow_pending');
+
+                const response = await fetch('/api/generate-w4', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userData: window.pendingUserData,
+                        calcResults: window.pendingCalcResults,
+                        whopToken: whopToken
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'PDF generation failed');
+                }
+
+                updateOoze('Generating your W-4...', 'Almost there!');
+                await new Promise(r => setTimeout(r, 1000));
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'W4-2026-TaxFlow.pdf';
+                
+                showOozeSuccess();
+                await new Promise(r => setTimeout(r, 1500));
+                
+                a.click();
+                URL.revokeObjectURL(url);
+                hideOoze();
+
+                // Store for re-download
+                window.paidUserData = window.pendingUserData;
+                window.paidCalcResults = window.pendingCalcResults;
+
+                showPaidSuccessUI();
+
+            } catch (err) {
+                hideOoze();
+                alert('Error generating PDF: ' + err.message);
+            }
+        }
+
+        async function redownloadPDF() {
+            // Try window variables first, then localStorage
+            let userData = window.paidUserData || JSON.parse(localStorage.getItem('taxflow_userData') || 'null');
+            let calcResults = window.paidCalcResults || JSON.parse(localStorage.getItem('taxflow_calcResults') || 'null');
+            
+            if (!userData || !calcResults) {
+                alert('Session expired. Please complete checkout again.');
+                return;
+            }
+
+            showOoze('Regenerating PDF...', 'One moment');
+
+            try {
+                const response = await fetch('/api/generate-w4', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userData: userData,
+                        calcResults: calcResults,
+                        whopToken: 'redownload_verified_' + Date.now()
+                    })
+                });
+
+                if (!response.ok) throw new Error('Generation failed');
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'W4-2026-TaxFlow.pdf';
+                
+                showOozeSuccess();
+                await new Promise(r => setTimeout(r, 1000));
+                
+                a.click();
+                URL.revokeObjectURL(url);
+                hideOoze();
+
+            } catch (err) {
+                hideOoze();
+                alert('Error: ' + err.message);
+            }
+        }
+
+        // ============================================
+        // OOZE ANIMATION HELPERS
+        // ============================================
+        
+        function showOoze(text, subtext) {
+            const overlay = $('ooze-overlay');
+            const container = overlay.querySelector('.ooze-container');
+            container.classList.remove('ooze-success');
+            $('ooze-text').textContent = text;
+            $('ooze-subtext').textContent = subtext;
+            $('ooze-blob').innerHTML = '';
+            overlay.classList.add('show');
+        }
+
+        function updateOoze(text, subtext) {
+            $('ooze-text').textContent = text;
+            $('ooze-subtext').textContent = subtext;
+        }
+
+        function showOozeSuccess() {
+            const container = $('ooze-overlay').querySelector('.ooze-container');
+            container.classList.add('ooze-success');
+            $('ooze-text').textContent = 'Success!';
+            $('ooze-subtext').textContent = 'Your W-4 is ready';
+        }
+
+        function hideOoze() {
+            $('ooze-overlay').classList.remove('show');
+        }
+
+        // ============================================
+        // INPUT HELPERS
+        // ============================================
+        
+        function forceUpper(el) {
+            if (!el) return;
+            el.addEventListener('input', () => {
+                const start = el.selectionStart;
+                const end = el.selectionEnd;
+                el.value = (el.value || '').toUpperCase();
+                try { el.setSelectionRange(start, end); } catch(e) {}
+            });
+        }
+
+        function formatSSNDigits(raw) {
+            const digits = (raw || '').replace(/\D/g, '').slice(0, 9);
+            let out = digits;
+            if (digits.length > 5) out = digits.slice(0, 3) + '-' + digits.slice(3, 5) + '-' + digits.slice(5);
+            else if (digits.length > 3) out = digits.slice(0, 3) + '-' + digits.slice(3);
+            return out;
+        }
+
+        function bindSSNMask(el) {
+            if (!el) return;
+            el.addEventListener('input', () => {
+                el.value = formatSSNDigits(el.value);
+            });
+            el.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData('text');
+                el.value = formatSSNDigits(text);
+            });
+        }
+
+        // Option selection
+        document.querySelectorAll('.options').forEach(g => {
+            g.querySelectorAll('.option').forEach(o => {
+                o.addEventListener('click', () => {
+                    g.querySelectorAll('.option').forEach(x => x.classList.remove('selected'));
+                    o.classList.add('selected');
+                    const inp = o.querySelector('input');
+                    if (inp) inp.checked = true;
+                    calc();
+                });
+            });
+        });
+
+        // Enter key
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && step < STEPS) {
+                e.preventDefault();
+                if (step === 7) showResults();
+                else next();
+            }
+        });
+
+        // Init
+        calc();
+        
+        // Check if returning from Whop payment
+        checkPaymentReturn();
+        
+        // Bind input helpers on load
+        (function bindTaxFlowInputs() {
+            const upperIds = ['firstName', 'lastName', 'address', 'city', 'state'];
+            upperIds.forEach(id => forceUpper($(id)));
+            bindSSNMask($('ssn'));
+        })();
+    </script>
+</body>
+</html>
